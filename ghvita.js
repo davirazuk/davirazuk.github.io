@@ -96,7 +96,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
         PACKAGE_PATH = encodeURIComponent(location.pathname.substring(0, location.pathname.lastIndexOf('/')) + '/');
       }
       var PACKAGE_NAME = 'web/wasm/ghvita.data';
-      var REMOTE_PACKAGE_BASE = 'ghvita.data?v=8';
+      var REMOTE_PACKAGE_BASE = 'ghvita.data?v=9';
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;
       var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
 
@@ -146,6 +146,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
             Module['dataFileDownloads'][packageName] = {loaded:loaded, total:size};
             log('Downloading data... ('+loaded+'/'+size+')');
           }
+          log('data fetch complete');
           return out.buffer;
         }
         log('Downloading data...');
@@ -196,7 +197,9 @@ Module['FS_createPath']("/data/songs", "desert", true, true);
       if (!fetched) {
         fetched = await fetchPromise;
       }
+      try{(window.__ghLog=window.__ghLog||[]).push('processing data...');}catch(e){}
       await processPackageData(fetched);
+      try{(window.__ghLog=window.__ghLog||[]).push('data processed');}catch(e){}
 
     }
     // Detect whether the module JS file has already been loaded.
@@ -755,7 +758,7 @@ function createExportWrapper(name, func, nargs) {
 var wasmBinaryFile;
 
 function findWasmBinary() {
-  return locateFile('ghvita.wasm?v=8');
+  return locateFile('ghvita.wasm?v=9');
 }
 
 function getBinarySync(file) {
