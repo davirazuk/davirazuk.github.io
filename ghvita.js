@@ -96,7 +96,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
         PACKAGE_PATH = encodeURIComponent(location.pathname.substring(0, location.pathname.lastIndexOf('/')) + '/');
       }
       var PACKAGE_NAME = 'web/wasm/ghvita.data';
-      var REMOTE_PACKAGE_BASE = 'ghvita.data?v=7';
+      var REMOTE_PACKAGE_BASE = 'ghvita.data?v=8';
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;
       var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
 
@@ -106,48 +106,51 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
           return new Uint8Array(contents).buffer;
         }
         if (!Module['dataFileDownloads']) Module['dataFileDownloads'] = {};
-        try {
+        var log=function(m){ try{ (window.__ghLog=window.__ghLog||[]).push(m); }catch(e){} if(Module['setStatus']) Module['setStatus'](m); };
+        var total = Number(packageSize)||0;
+        async function fetchWhole() {
           var response = await fetch(packageName);
-        } catch (e) {
-          throw new Error(`Network Error: ${packageName}`, {e});
-        }
-        if (!response.ok) {
-          throw new Error(`${response.status}: ${response.url}`);
-        }
-
-        const chunks = [];
-        const headers = response.headers;
-        const total = Number(headers.get('Content-Length') || packageSize);
-        let loaded = 0;
-
-        Module['setStatus'] && Module['setStatus']('Downloading data...');
-        const reader = response.body.getReader();
-
-        while (1) {
-          var {done, value} = await reader.read();
-          if (done) break;
-          chunks.push(value);
-          loaded += value.length;
-          Module['dataFileDownloads'][packageName] = {loaded, total};
-
-          let totalLoaded = 0;
-          let totalSize = 0;
-
-          for (const download of Object.values(Module['dataFileDownloads'])) {
-            totalLoaded += download.loaded;
-            totalSize += download.total;
+          if (!response.ok) throw new Error(response.status+': '+response.url);
+          var chunks=[], loaded=0, t=Number(response.headers.get('Content-Length')||total);
+          var reader = response.body.getReader();
+          while (1) {
+            var r = await reader.read();
+            if (r.done) break;
+            chunks.push(r.value); loaded += r.value.length;
+            Module['dataFileDownloads'][packageName] = {loaded:loaded, total:t};
+            log('Downloading data... ('+loaded+'/'+t+')');
           }
-
-          Module['setStatus'] && Module['setStatus'](`Downloading data... (${totalLoaded}/${totalSize})`);
+          var out = new Uint8Array(loaded); var off=0;
+          for (var i=0;i<chunks.length;i++){ out.set(chunks[i],off); off+=chunks[i].length; }
+          return out.buffer;
         }
-
-        const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
-        let offset = 0;
-        for (const chunk of chunks) {
-          packageData.set(chunk, offset);
-          offset += chunk.length;
+        async function fetchRanges() {
+          var size = total;
+          if (!size) {
+            var h = await fetch(packageName, {method:'HEAD'});
+            if (!h.ok) throw new Error(h.status+': '+h.url);
+            size = Number(h.headers.get('Content-Length')||0);
+          }
+          if (!size) throw new Error('no size');
+          var CH = 1024*1024;
+          var out = new Uint8Array(size);
+          var loaded = 0;
+          for (var start=0; start<size; start+=CH) {
+            var end = Math.min(size, start+CH)-1;
+            var resp = await fetch(packageName, {headers:{'Range':'bytes='+start+'-'+end}});
+            if (!(resp.status===206 || resp.status===200)) throw new Error('range '+resp.status);
+            var buf = new Uint8Array(await resp.arrayBuffer());
+            if (resp.status===200) { out = buf; loaded = buf.length; Module['dataFileDownloads'][packageName]={loaded:loaded,total:loaded}; log('Downloading data... ('+loaded+'/'+loaded+')'); return out.buffer; }
+            out.set(buf, start);
+            loaded += buf.length;
+            Module['dataFileDownloads'][packageName] = {loaded:loaded, total:size};
+            log('Downloading data... ('+loaded+'/'+size+')');
+          }
+          return out.buffer;
         }
-        return packageData.buffer;
+        log('Downloading data...');
+        try { return await fetchRanges(); }
+        catch(e) { log('range fallback: '+(e&&e.message?e.message:e)); return await fetchWhole(); }
       }
 
       var fetchPromise;
@@ -752,7 +755,7 @@ function createExportWrapper(name, func, nargs) {
 var wasmBinaryFile;
 
 function findWasmBinary() {
-  return locateFile('ghvita.wasm?v=7');
+  return locateFile('ghvita.wasm?v=8');
 }
 
 function getBinarySync(file) {
