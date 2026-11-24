@@ -96,7 +96,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
         PACKAGE_PATH = encodeURIComponent(location.pathname.substring(0, location.pathname.lastIndexOf('/')) + '/');
       }
       var PACKAGE_NAME = 'web/wasm/ghvita.data';
-      var REMOTE_PACKAGE_BASE = 'ghvita.data?v=10';
+      var REMOTE_PACKAGE_BASE = 'ghvita.data?v=11';
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;
       var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
 
@@ -108,8 +108,10 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
         if (!Module['dataFileDownloads']) Module['dataFileDownloads'] = {};
         var log=function(m){ try{ (window.__ghLog=window.__ghLog||[]).push(m); }catch(e){} if(Module['setStatus']) Module['setStatus'](m); };
         var total = Number(packageSize)||0;
-        async function fetchWhole() {
-          var response = await fetch(packageName);
+        var urls=[packageName, 'https://raw.githubusercontent.com/davirazuk/davirazuk.github.io/main/ghvita.data', 'https://cdn.jsdelivr.net/gh/davirazuk/davirazuk.github.io@main/ghvita.data'];
+        async function fetchWhole(url) {
+          log('fetch whole...');
+          var response = await fetch(url);
           if (!response.ok) throw new Error(response.status+': '+response.url);
           var chunks=[], loaded=0, t=Number(response.headers.get('Content-Length')||total);
           var reader = response.body.getReader();
@@ -124,37 +126,48 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
           for (var i=0;i<chunks.length;i++){ out.set(chunks[i],off); off+=chunks[i].length; }
           return out.buffer;
         }
-        async function fetchRanges() {
+        async function fetchRanges(url) {
           var size = total;
           if (!size) {
-            var h = await fetch(packageName, {method:'HEAD'});
-            if (!h.ok) throw new Error(h.status+': '+h.url);
-            size = Number(h.headers.get('Content-Length')||0);
+            var h = await fetch(url, {method:'HEAD'});
+            if (h.ok) size = Number(h.headers.get('Content-Length')||0);
           }
           if (!size) throw new Error('no size');
-          var CH = 1024*1024;
+          var CH = 512*1024;
           var out = new Uint8Array(size);
           var loaded = 0;
           for (var start=0; start<size; start+=CH) {
             var end = Math.min(size, start+CH)-1;
-            log('chunk '+start+'-'+end+'...');
-            var fetchP = fetch(packageName, {headers:{'Range':'bytes='+start+'-'+end}});
-            var timeoutP = new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout '+start)); }, 20000); });
-            var resp = await Promise.race([fetchP, timeoutP]);
-            if (!(resp.status===206 || resp.status===200)) throw new Error('range '+resp.status);
-            var buf = new Uint8Array(await resp.arrayBuffer());
-            if (resp.status===200) { out = buf; loaded = buf.length; Module['dataFileDownloads'][packageName]={loaded:loaded,total:loaded}; log('Downloading data... ('+loaded+'/'+loaded+')'); log('data fetch complete'); return out.buffer; }
-            out.set(buf, start);
-            loaded += buf.length;
-            Module['dataFileDownloads'][packageName] = {loaded:loaded, total:size};
-            log('Downloading data... ('+loaded+'/'+size+')');
+            var ok=false;
+            for (var attempt=0; attempt<3 && !ok; attempt++) {
+              try {
+                log('chunk '+start+(attempt?(' r'+attempt):''));
+                var fetchP = fetch(url, {headers:{'Range':'bytes='+start+'-'+end}});
+                var timeoutP = new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); }, 12000); });
+                var resp = await Promise.race([fetchP, timeoutP]);
+                if (resp.status===200) { log('full response'); return await (async function(){var b=new Uint8Array(await resp.arrayBuffer()); Module['dataFileDownloads'][packageName]={loaded:b.length,total:b.length}; log('Downloading data... ('+b.length+'/'+b.length+')'); return b.buffer;})(); }
+                if (resp.status!==206) throw new Error('range '+resp.status);
+                var buf = new Uint8Array(await resp.arrayBuffer());
+                out.set(buf, start);
+                loaded += buf.length;
+                Module['dataFileDownloads'][packageName] = {loaded:loaded, total:size};
+                log('Downloading data... ('+loaded+'/'+size+')');
+                ok=true;
+              } catch(e) {
+                log('retry '+start+': '+(e&&e.message?e.message:e));
+              }
+            }
+            if (!ok) throw new Error('chunk fail '+start);
           }
           log('data fetch complete');
           return out.buffer;
         }
-        log('Downloading data...');
-        try { return await fetchRanges(); }
-        catch(e) { log('range fallback: '+(e&&e.message?e.message:e)); return await fetchWhole(); }
+        for (var ui=0; ui<urls.length; ui++) {
+          var url = urls[ui];
+          try { log('try '+(ui+1)+'/'+urls.length); return await fetchRanges(url); }
+          catch(e) { log('fallback: '+(e&&e.message?e.message:e)); try { return await fetchWhole(url); } catch(e2) { log('fail: '+(e2&&e2.message?e2.message:e2)); } }
+        }
+        throw new Error('All data download attempts failed');
       }
 
       var fetchPromise;
@@ -761,7 +774,7 @@ function createExportWrapper(name, func, nargs) {
 var wasmBinaryFile;
 
 function findWasmBinary() {
-  return locateFile('ghvita.wasm?v=10');
+  return locateFile('ghvita.wasm?v=11');
 }
 
 function getBinarySync(file) {
