@@ -76,7 +76,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
-// include: /tmp/tmpe6ly7kfk.js
+// include: /tmp/tmp4h8lq_xk.js
 
   if (!Module['expectedDataFileDownloads']) Module['expectedDataFileDownloads'] = 0;
   Module['expectedDataFileDownloads']++;
@@ -96,7 +96,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
         PACKAGE_PATH = encodeURIComponent(location.pathname.substring(0, location.pathname.lastIndexOf('/')) + '/');
       }
       var PACKAGE_NAME = 'web/wasm/ghvita.data';
-      var REMOTE_PACKAGE_BASE = 'ghvita.data?v=11';
+      var REMOTE_PACKAGE_BASE = 'ghvita.data?v=12';
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;
       var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
 
@@ -145,7 +145,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
                 var fetchP = fetch(url, {headers:{'Range':'bytes='+start+'-'+end}});
                 var timeoutP = new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); }, 12000); });
                 var resp = await Promise.race([fetchP, timeoutP]);
-                if (resp.status===200) { log('full response'); return await (async function(){var b=new Uint8Array(await resp.arrayBuffer()); Module['dataFileDownloads'][packageName]={loaded:b.length,total:b.length}; log('Downloading data... ('+b.length+'/'+b.length+')'); return b.buffer;})(); }
+                if (resp.status===200) { var b=new Uint8Array(await resp.arrayBuffer()); Module['dataFileDownloads'][packageName]={loaded:b.length,total:b.length}; log('Downloading data... ('+b.length+'/'+b.length+')'); log('data fetch complete'); return b.buffer; }
                 if (resp.status!==206) throw new Error('range '+resp.status);
                 var buf = new Uint8Array(await resp.arrayBuffer());
                 out.set(buf, start);
@@ -153,9 +153,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
                 Module['dataFileDownloads'][packageName] = {loaded:loaded, total:size};
                 log('Downloading data... ('+loaded+'/'+size+')');
                 ok=true;
-              } catch(e) {
-                log('retry '+start+': '+(e&&e.message?e.message:e));
-              }
+              } catch(e) { log('retry '+start+': '+(e&&e.message?e.message:e)); }
             }
             if (!ok) throw new Error('chunk fail '+start);
           }
@@ -187,9 +185,6 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 Module['FS_createPath']("/", "assets", true, true);
 Module['FS_createPath']("/assets", "band", true, true);
 Module['FS_createPath']("/assets", "sfx", true, true);
-Module['FS_createPath']("/", "data", true, true);
-Module['FS_createPath']("/data", "songs", true, true);
-Module['FS_createPath']("/data/songs", "desert", true, true);
 
       async function processPackageData(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file failed.');
@@ -213,9 +208,7 @@ Module['FS_createPath']("/data/songs", "desert", true, true);
       if (!fetched) {
         fetched = await fetchPromise;
       }
-      try{(window.__ghLog=window.__ghLog||[]).push('processing data...');}catch(e){}
       await processPackageData(fetched);
-      try{(window.__ghLog=window.__ghLog||[]).push('data processed');}catch(e){}
 
     }
     // Detect whether the module JS file has already been loaded.
@@ -227,25 +220,25 @@ Module['FS_createPath']("/data/songs", "desert", true, true);
     }
 
     }
-    loadPackage({"files": [{"filename": "/assets/band/band.txt", "start": 0, "end": 35}, {"filename": "/assets/band/bassist.png", "start": 35, "end": 333592}, {"filename": "/assets/band/drummer.png", "start": 333592, "end": 454525}, {"filename": "/assets/band/guitarist.png", "start": 454525, "end": 816249}, {"filename": "/assets/band/rise.txt", "start": 816249, "end": 817741}, {"filename": "/assets/band/vocalist.png", "start": 817741, "end": 1252757}, {"filename": "/assets/bg_menu.jpg", "start": 1252757, "end": 1362916}, {"filename": "/assets/bg_results.jpg", "start": 1362916, "end": 1506967}, {"filename": "/assets/bg_stage.jpg", "start": 1506967, "end": 1548475}, {"filename": "/assets/bg_title.jpg", "start": 1548475, "end": 1729168}, {"filename": "/assets/font_title.fnt", "start": 1729168, "end": 1732964}, {"filename": "/assets/font_ui.fnt", "start": 1732964, "end": 1743420}, {"filename": "/assets/game.png", "start": 1743420, "end": 3095337}, {"filename": "/assets/game.txt", "start": 3095337, "end": 3101776}, {"filename": "/assets/hud.png", "start": 3101776, "end": 4980284}, {"filename": "/assets/hud.txt", "start": 4980284, "end": 4982819}, {"filename": "/assets/logo.png", "start": 4982819, "end": 5143045}, {"filename": "/assets/sfx/miss.ogg", "start": 5143045, "end": 5158272}, {"filename": "/assets/sfx/sp_award.ogg", "start": 5158272, "end": 5198282}, {"filename": "/assets/sfx/star.ogg", "start": 5198282, "end": 5230970}, {"filename": "/assets/sfx/ui_back.ogg", "start": 5230970, "end": 5236305}, {"filename": "/assets/sfx/ui_move.ogg", "start": 5236305, "end": 5240743}, {"filename": "/assets/sfx/ui_select.ogg", "start": 5240743, "end": 5246011}, {"filename": "/assets/stage.png", "start": 5246011, "end": 5298269}, {"filename": "/assets/stage.txt", "start": 5298269, "end": 5298567}, {"filename": "/assets/vignette.png", "start": 5298567, "end": 5317801}, {"filename": "/data/songs/desert/album.png", "start": 5317801, "end": 5332885}, {"filename": "/data/songs/desert/guitar.ogg", "start": 5332885, "end": 6884149}, {"filename": "/data/songs/desert/notes.chart", "start": 6884149, "end": 6983595}, {"filename": "/data/songs/desert/song.ini", "start": 6983595, "end": 6983954}, {"filename": "/data/songs/desert/song.ogg", "start": 6983954, "end": 8496468}, {"filename": "/data/songs/list.txt", "start": 8496468, "end": 8496668}], "remote_package_size": 8496668});
+    loadPackage({"files": [{"filename": "/assets/band/band.txt", "start": 0, "end": 35}, {"filename": "/assets/band/bassist.png", "start": 35, "end": 333592}, {"filename": "/assets/band/drummer.png", "start": 333592, "end": 454525}, {"filename": "/assets/band/guitarist.png", "start": 454525, "end": 816249}, {"filename": "/assets/band/rise.txt", "start": 816249, "end": 817741}, {"filename": "/assets/band/vocalist.png", "start": 817741, "end": 1252757}, {"filename": "/assets/bg_menu.jpg", "start": 1252757, "end": 1362916}, {"filename": "/assets/bg_results.jpg", "start": 1362916, "end": 1506967}, {"filename": "/assets/bg_stage.jpg", "start": 1506967, "end": 1548475}, {"filename": "/assets/bg_title.jpg", "start": 1548475, "end": 1729168}, {"filename": "/assets/font_title.fnt", "start": 1729168, "end": 1732964}, {"filename": "/assets/font_ui.fnt", "start": 1732964, "end": 1743420}, {"filename": "/assets/game.png", "start": 1743420, "end": 3095337}, {"filename": "/assets/game.txt", "start": 3095337, "end": 3101776}, {"filename": "/assets/hud.png", "start": 3101776, "end": 4980284}, {"filename": "/assets/hud.txt", "start": 4980284, "end": 4982819}, {"filename": "/assets/logo.png", "start": 4982819, "end": 5143045}, {"filename": "/assets/sfx/miss.ogg", "start": 5143045, "end": 5158272}, {"filename": "/assets/sfx/sp_award.ogg", "start": 5158272, "end": 5198282}, {"filename": "/assets/sfx/star.ogg", "start": 5198282, "end": 5230970}, {"filename": "/assets/sfx/ui_back.ogg", "start": 5230970, "end": 5236305}, {"filename": "/assets/sfx/ui_move.ogg", "start": 5236305, "end": 5240743}, {"filename": "/assets/sfx/ui_select.ogg", "start": 5240743, "end": 5246011}, {"filename": "/assets/stage.png", "start": 5246011, "end": 5298269}, {"filename": "/assets/stage.txt", "start": 5298269, "end": 5298567}, {"filename": "/assets/vignette.png", "start": 5298567, "end": 5317801}], "remote_package_size": 5317801});
 
   })();
 
-// end include: /tmp/tmpe6ly7kfk.js
-// include: /tmp/tmpfuty0wkr.js
+// end include: /tmp/tmp4h8lq_xk.js
+// include: /tmp/tmp0_avlsf4.js
 
     // All the pre-js content up to here must remain later on, we need to run
     // it.
     if ((typeof ENVIRONMENT_IS_WASM_WORKER !== 'undefined' && ENVIRONMENT_IS_WASM_WORKER) || (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET !== 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
-  // end include: /tmp/tmpfuty0wkr.js
-// include: /tmp/tmpe694wjr8.js
+  // end include: /tmp/tmp0_avlsf4.js
+// include: /tmp/tmpk4r0ldwl.js
 
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach((task) => {
       if (!Module['preRun'].includes(task)) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
-  // end include: /tmp/tmpe694wjr8.js
+  // end include: /tmp/tmpk4r0ldwl.js
 
 
 var programArgs = [];
@@ -774,7 +767,7 @@ function createExportWrapper(name, func, nargs) {
 var wasmBinaryFile;
 
 function findWasmBinary() {
-  return locateFile('ghvita.wasm?v=11');
+  return locateFile('ghvita.wasm');
 }
 
 function getBinarySync(file) {
