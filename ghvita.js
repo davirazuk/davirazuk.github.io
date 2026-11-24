@@ -96,7 +96,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
         PACKAGE_PATH = encodeURIComponent(location.pathname.substring(0, location.pathname.lastIndexOf('/')) + '/');
       }
       var PACKAGE_NAME = 'web/wasm/ghvita.data';
-      var REMOTE_PACKAGE_BASE = 'ghvita.data?v=9';
+      var REMOTE_PACKAGE_BASE = 'ghvita.data?v=10';
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;
       var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
 
@@ -137,10 +137,13 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
           var loaded = 0;
           for (var start=0; start<size; start+=CH) {
             var end = Math.min(size, start+CH)-1;
-            var resp = await fetch(packageName, {headers:{'Range':'bytes='+start+'-'+end}});
+            log('chunk '+start+'-'+end+'...');
+            var fetchP = fetch(packageName, {headers:{'Range':'bytes='+start+'-'+end}});
+            var timeoutP = new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout '+start)); }, 20000); });
+            var resp = await Promise.race([fetchP, timeoutP]);
             if (!(resp.status===206 || resp.status===200)) throw new Error('range '+resp.status);
             var buf = new Uint8Array(await resp.arrayBuffer());
-            if (resp.status===200) { out = buf; loaded = buf.length; Module['dataFileDownloads'][packageName]={loaded:loaded,total:loaded}; log('Downloading data... ('+loaded+'/'+loaded+')'); return out.buffer; }
+            if (resp.status===200) { out = buf; loaded = buf.length; Module['dataFileDownloads'][packageName]={loaded:loaded,total:loaded}; log('Downloading data... ('+loaded+'/'+loaded+')'); log('data fetch complete'); return out.buffer; }
             out.set(buf, start);
             loaded += buf.length;
             Module['dataFileDownloads'][packageName] = {loaded:loaded, total:size};
@@ -758,7 +761,7 @@ function createExportWrapper(name, func, nargs) {
 var wasmBinaryFile;
 
 function findWasmBinary() {
-  return locateFile('ghvita.wasm?v=9');
+  return locateFile('ghvita.wasm?v=10');
 }
 
 function getBinarySync(file) {
