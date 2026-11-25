@@ -5074,7 +5074,7 @@ var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
   }
   }
   
-  const ASYNCIFY_STACK_SIZE = 4096;
+  const ASYNCIFY_STACK_SIZE = 2097152;
   var handleException = (e) => {
       // Certain exception types we do not treat as errors since they are used for
       // internal control flow.
